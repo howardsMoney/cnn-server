@@ -19,6 +19,37 @@ function registerRoutes(app, { routes : r }, callback) {
     callback();
 }
 
+function registerPlugins(app, { plugins : p }, callback) {
+    const plugins = p.slice();
+
+    plugins.forEach(({ register, options },index,array) => {
+        let pluginName =
+          (register.register.attributes.pkg !== undefined) ? register.register.attributes.pkg.name : register.register.attributes.name;
+        log.info(`Registering plugin: ${pluginName}`);
+
+        if (index === (array.length-1)) {
+          app.register({ register : register, options : options},(err) => {
+            if (err) {
+              log.error('Failed to load plugin:', err);
+
+              throw err;
+            }
+
+            callback();
+          });
+        }
+        else {
+          app.register({ register : register, options : options}, (err) => {
+            if (err) {
+              log.error('Failed to load plugin:', err);
+
+              throw err;
+            }
+          });
+        }
+    });
+}
+
 function server(config, escapeHatch = null) {
 
     const Hapi = require('hapi');
@@ -26,7 +57,8 @@ function server(config, escapeHatch = null) {
 
     app.connection({ port: config.port, host: config.hostname });
 
-    const step2 = start.bind(null, app, config);
+    const step3 = start.bind(null, app, config);
+    const step2 = registerPlugins.bind(null,app, config, step3);
     const step1 = registerRoutes.bind(null, app, config, step2);
 
     step1();
